@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Boutique Stock Pro - Controle de Estoque</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg-body: #0f172a;
+      --bg-card: #1e293b;
+      --bg-input: #0f172a;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #8b5cf6;
+      --accent-hover: #7c3aed;
+      --border: #334155;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-body);
+      color: var(--text-main);
+      padding: 20px;
+    }
+
+    .wrapper {
+      max-width: 1320px;
+      margin: 0 auto;
+    }
+
+    /* Cabeçalho */
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .topbar h1 {
+      font-size: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .topbar-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    /* Indicadores */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .kpi-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 20px;
+    }
+
+    .kpi-card p {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .kpi-card h3 {
+      font-size: 1.65rem;
+      margin-top: 6px;
+    }
+
+    .kpi-danger h3 { color: var(--danger); }
+    .kpi-success h3 { color: var(--success); }
+
+    /* Layout Principal: Formulário + Tabela */
+    .main-layout {
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    @media (max-width: 960px) {
+      .main-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+    }
+
+    .panel h2 {
+      font-size: 1.1rem;
+      margin-bottom: 16px;
+      color: var(--text-main);
+    }
+
+    .field {
+      margin-bottom: 12px;
+    }
+
+    .field-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    label {
+      display: block;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: 5px;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 10px 12px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-main);
+      font-size: 0.9rem;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .btn {
+      padding: 10px 16px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .btn-accent {
+      background: var(--accent);
+      color: white;
+      width: 100%;
+    }
+
+    .btn-accent:hover { background: var(--accent-hover); }
+
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-main);
+    }
+
+    .btn-outline:hover { background: rgba(255,255,255,0.05); }
+
+    /* Filtros */
+    .search-bar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .search-bar input { flex: 2; min-width: 180px; }
+    .search-bar select { flex: 1; min-width: 140px; }
+
+    /* Tabela */
+    .table-box {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      padding: 12px 10px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.88rem;
+    }
+
+    th {
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+    }
+
+    /* Controle rápido de quantidade (+/-) */
+    .qty-control {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg-input);
+      padding: 4px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+
+    .qty-btn {
+      background: var(--bg-card);
+      color: var(--text-main);
+      border: 1px solid var(--border);
+      width: 24px;
+      height: 24px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .qty-btn:hover { background: var(--accent); border-color: var(--accent); }
+
+    /* Status Tags */
+    .tag {
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .tag-ok { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+    .tag-low { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+    .tag-zero { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+
+    .icon-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 1rem;
+      padding: 4px;
+      opacity: 0.8;
+    }
+    .icon-btn:hover { opacity: 1; }
+
+    #toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      padding: 12px 20px;
+      border-radius: 8px;
+      background: var(--accent);
+      color: white;
+      font-weight: 500;
+      display: none;
+      z-index: 999;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+    }
+  </style>
+</head>
+<body>
+
+<div class="wrapper">
+  <div class="topbar">
+    <h1>🛍️ Boutique Stock Pro</h1>
+    <div class="topbar-actions">
+      <button class="btn btn-outline" onclick="exportarCSV()">📥 Baixar Planilha (CSV)</button>
+      <button class="btn btn-outline" onclick="buscarDados()">🔄 Sincronizar</button>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <p>Peças em Estoque</p>
+      <h3 id="kpi-qtd">0</h3>
+    </div>
+    <div class="kpi-card">
+      <p>Custo Total Imobilizado</p>
+      <h3 id="kpi-custo">R$ 0,00</h3>
+    </div>
+    <div class="kpi-card kpi-success">
+      <p>Potencial de Venda</p>
+      <h3 id="kpi-venda">R$ 0,00</h3>
+    </div>
+    <div class="kpi-card kpi-danger">
+      <p>Reposição Urgente</p>
+      <h3 id="kpi-alerta">0 itens</h3>
+    </div>
+  </div>
+
+  <div class="main-layout">
+    <!-- Formulário Lateral -->
+    <div class="panel">
+      <h2 id="titulo-form">➕ Nova Peça</h2>
+      <form id="form-peca">
+        <input type="hidden" id="edit-id">
+        
+        <div class="field-row">
+          <div class="field">
+            <label>Código / Ref*</label>
+            <input type="text" id="codigo" placeholder="BLZ-01" required>
+          </div>
+          <div class="field">
+            <label>Tamanho*</label>
+            <select id="tamanho">
+              <option>PP</option><option>P</option><option selected>M</option>
+              <option>G</option><option>GG</option><option>36</option>
+              <option>38</option><option>40</option><option>42</option><option>Único</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Nome da Peça*</label>
+          <input type="text" id="nome" placeholder="Ex: Jaqueta Jeans Oversized" required>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Categoria*</label>
+            <select id="categoria">
+              <option>Blusas</option><option>Calças</option><option>Vestidos</option>
+              <option>Casacos</option><option>Saias</option><option>Acessórios</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Cor*</label>
+            <input type="text" id="cor" placeholder="Ex: Preto" required>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Preço Custo (R$)*</label>
+            <input type="number" id="preco_custo" step="0.01" min="0" value="0" required>
+          </div>
+          <div class="field">
+            <label>Preço Venda (R$)*</label>
+            <input type="number" id="preco_venda" step="0.01" min="0" required>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Qtd. Inicial*</label>
+            <input type="number" id="quantidade" min="0" value="1" required>
+          </div>
+          <div class="field">
+            <label>Alerta Mínimo*</label>
+            <input type="number" id="estoque_minimo" min="0" value="3" required>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-accent" id="btn-submit" style="margin-top: 8px;">Cadastrar Peça</button>
+        <button type="button" class="btn btn-outline" id="btn-cancel" onclick="limparForm()" style="width: 100%; margin-top: 8px; display: none;">Cancelar Edição</button>
+      </form>
+    </div>
+
+    <!-- Tabela de Estoque -->
+    <div class="panel">
+      <div class="search-bar">
+        <input type="text" id="filtro-texto" placeholder="🔍 Buscar código, nome ou cor..." oninput="filtrarTabela()">
+        <select id="filtro-cat" onchange="filtrarTabela()">
+          <option value="">Todas Categorias</option>
+          <option>Blusas</option><option>Calças</option><option>Vestidos</option>
+          <option>Casacos</option><option>Saias</option><option>Acessórios</option>
+        </select>
+        <select id="filtro-alerta" onchange="filtrarTabela()">
+          <option value="">Todos Status</option>
+          <option value="critico">⚠️ Estoque Baixo / Zero</option>
+        </select>
+      </div>
+
+      <div class="table-box">
+        <table>
+          <thead>
+            <tr>
+              <th>Ref</th>
+              <th>Peça / Cor</th>
+              <th>Tam.</th>
+              <th>Venda</th>
+              <th>Estoque Rápido</th>
+              <th>Status</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="lista-estoque">
+            <tr><td colspan="7" style="text-align:center; color: var(--text-muted);">Conectando ao banco...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+  // =========================================================================
+  // INSIRA SUAS CHAVES DO SUPABASE ABAIXO
+  // =========================================================================
+  const SUPABASE_URL = 'https://bibrosscckhdkthenqkw.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_lW-a-fkxMw28cbQNlGeWTg_EZ4LxolN';
+
+  const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  let inventario = [];
+
+  document.addEventListener('DOMContentLoaded', () => {
+    if (SUPABASE_URL.includes('COLE_SUA')) {
+      notificar('⚠️ Configure sua URL e Chave API no arquivo HTML!', true);
+      return;
+    }
+    buscarDados();
+  });
+
+  function notificar(msg, erro = false) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.background = erro ? '#ef4444' : '#8b5cf6';
+    t.style.display = 'block';
+    setTimeout(() => t.style.display = 'none', 4000);
+  }
+
+  async function buscarDados() {
+    const { data, error } = await db
+      .from('produtos_v2')
+      .select('*')
+      .order('id', { ascending: false });
+
+    if (error) {
+      notificar('Erro ao buscar: ' + error.message, true);
+      return;
+    }
+    inventario = data || [];
+    atualizarKPIs();
+    filtrarTabela();
+  }
+
+  function atualizarKPIs() {
+    let pecas = 0, custo = 0, venda = 0, alertas = 0;
+    inventario.forEach(item => {
+      pecas += item.quantidade;
+      custo += item.quantidade * parseFloat(item.preco_custo || 0);
+      venda += item.quantidade * parseFloat(item.preco_venda || 0);
+      if (item.quantidade <= item.estoque_minimo) alertas++;
+    });
+
+    document.getElementById('kpi-qtd').textContent = pecas;
+    document.getElementById('kpi-custo').textContent = custo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    document.getElementById('kpi-venda').textContent = venda.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    document.getElementById('kpi-alerta').textContent = `${alertas} ${alertas === 1 ? 'item' : 'itens'}`;
+  }
+
+  function filtrarTabela() {
+    const txt = document.getElementById('filtro-texto').value.toLowerCase();
+    const cat = document.getElementById('filtro-cat').value;
+    const alerta = document.getElementById('filtro-alerta').value;
+
+    const filtrados = inventario.filter(i => {
+      const bateTexto = i.nome.toLowerCase().includes(txt) || i.codigo.toLowerCase().includes(txt) || i.cor.toLowerCase().includes(txt);
+      const bateCat = !cat || i.categoria === cat;
+      const bateAlerta = !alerta || (i.quantidade <= i.estoque_minimo);
+      return bateTexto && bateCat && bateAlerta;
+    });
+
+    desenharTabela(filtrados);
+  }
+
+  function desenharTabela(lista) {
+    const tbody = document.getElementById('lista-estoque');
+    tbody.innerHTML = '';
+
+    if (!lista.length) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color: var(--text-muted);">Nenhuma peça encontrada.</td></tr>';
+      return;
+    }
+
+    lista.forEach(item => {
+      let statusTag = `<span class="tag tag-ok">OK</span>`;
+      if (item.quantidade === 0) statusTag = `<span class="tag tag-zero">Esgotado</span>`;
+      else if (item.quantidade <= item.estoque_minimo) statusTag = `<span class="tag tag-low">Baixo (Mín ${item.estoque_minimo})</span>`;
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><strong>${item.codigo}</strong></td>
+        <td>
+          <div>${item.nome}</div>
+          <small style="color: var(--text-muted);">${item.categoria} • Cor: ${item.cor}</small>
+        </td>
+        <td>${item.tamanho}</td>
+        <td>${parseFloat(item.preco_venda).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+        <td>
+          <div class="qty-control">
+            <button class="qty-btn" onclick="alterarQtd(${item.id}, ${item.quantidade - 1})">-</button>
+            <span style="min-width: 24px; text-align:center; font-weight:bold;">${item.quantidade}</span>
+            <button class="qty-btn" onclick="alterarQtd(${item.id}, ${item.quantidade + 1})">+</button>
+          </div>
+        </td>
+        <td>${statusTag}</td>
+        <td>
+          <button class="icon-btn" title="Editar" onclick="editarItem(${item.id})">✏️</button>
+          <button class="icon-btn" title="Excluir" onclick="deletarItem(${item.id}, '${item.nome}')">🗑️</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // Botões rápidos +1 e -1 direto na tabela
+  async function alterarQtd(id, novaQtd) {
+    if (novaQtd < 0) return;
+    const { error } = await db
+      .from('produtos_v2')
+      .update({ quantidade: novaQtd, atualizado_em: new Date().toISOString() })
+      .eq('id', id);
+
+    if (error) {
+      notificar('Erro ao atualizar quantidade', true);
+      return;
+    }
+    buscarDados();
+  }
+
+  // Salvar ou Atualizar
+  document.getElementById('form-peca').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('edit-id').value;
+
+    const payload = {
+      codigo: document.getElementById('codigo').value.trim().toUpperCase(),
+      nome: document.getElementById('nome').value.trim(),
+      categoria: document.getElementById('categoria').value,
+      cor: document.getElementById('cor').value.trim(),
+      tamanho: document.getElementById('tamanho').value,
+      preco_custo: parseFloat(document.getElementById('preco_custo').value) || 0,
+      preco_venda: parseFloat(document.getElementById('preco_venda').value),
+      quantidade: parseInt(document.getElementById('quantidade').value, 10),
+      estoque_minimo: parseInt(document.getElementById('estoque_minimo').value, 10)
+    };
+
+    const res = id
+      ? await db.from('produtos_v2').update(payload).eq('id', id)
+      : await db.from('produtos_v2').insert([payload]);
+
+    if (res.error) {
+      notificar(res.error.code === '23505' ? 'Código já cadastrado!' : res.error.message, true);
+      return;
+    }
+
+    notificar(id ? 'Peça atualizada!' : 'Peça cadastrada com sucesso!');
+    limparForm();
+    buscarDados();
+  });
+
+  function editarItem(id) {
+    const p = inventario.find(x => x.id === id);
+    if (!p) return;
+
+    document.getElementById('edit-id').value = p.id;
+    document.getElementById('codigo').value = p.codigo;
+    document.getElementById('nome').value = p.nome;
+    document.getElementById('categoria').value = p.categoria;
+    document.getElementById('cor').value = p.cor;
+    document.getElementById('tamanho').value = p.tamanho;
+    document.getElementById('preco_custo').value = p.preco_custo;
+    document.getElementById('preco_venda').value = p.preco_venda;
+    document.getElementById('quantidade').value = p.quantidade;
+    document.getElementById('estoque_minimo').value = p.estoque_minimo;
+
+    document.getElementById('titulo-form').textContent = '✏️ Editando ' + p.codigo;
+    document.getElementById('btn-submit').textContent = 'Salvar Alterações';
+    document.getElementById('btn-cancel').style.display = 'block';
+  }
+
+  function limparForm() {
+    document.getElementById('form-peca').reset();
+    document.getElementById('edit-id').value = '';
+    document.getElementById('titulo-form').textContent = '➕ Nova Peça';
+    document.getElementById('btn-submit').textContent = 'Cadastrar Peça';
+    document.getElementById('btn-cancel').style.display = 'none';
+  }
+
+  async function deletarItem(id, nome) {
+    if (!confirm(`Remover "${nome}" permanentemente?`)) return;
+    const { error } = await db.from('produtos_v2').delete().eq('id', id);
+    if (error) {
+      notificar('Erro ao excluir', true);
+      return;
+    }
+    notificar('Peça excluída.');
+    buscarDados();
+  }
+
+  // Exportar dados para Excel/CSV
+  function exportarCSV() {
+    if (!inventario.length) return notificar('Nada para exportar.', true);
+    const cabecalho = ['Codigo,Nome,Categoria,Cor,Tamanho,Custo,Venda,Quantidade,Minimo'];
+    const linhas = inventario.map(i =>
+      `"${i.codigo}","${i.nome}","${i.categoria}","${i.cor}","${i.tamanho}",${i.preco_custo},${i.preco_venda},${i.quantidade},${i.estoque_minimo}`
+    );
+    const blob = new Blob([cabecalho.concat(linhas).join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `estoque_loja_${new Date().toISOString().slice(0,10)}.csv`;
+    link.click();
+  }
+</script>
+
+</body>
+</html>
